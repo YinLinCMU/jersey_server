@@ -40,16 +40,16 @@ public class HelloWorldREST {
 		 JSONObject resd = new JSONObject();
 		 HashSet<String> hs = get_key(comp_data);
 		 String[] keywords = hs.toArray(new String[hs.size()]);
-		 JSONArray ele = new JSONArray();
-		 JSONObject tmpjo = new JSONObject();
 		 JSONArray columns = new JSONArray();
 		 HashSet nk = new HashSet();
 		 for(int i = 0; i < 10; i++){
+			 JSONObject tmpjo = new JSONObject();
 			 tmpjo.put("key", keywords[i]);
 			 tmpjo.put("full_name", keywords[i]);
 			 tmpjo.put("type", "numeric");
 			 tmpjo.put("is_objective", "TRUE");
 			 tmpjo.put("goal", "MIN");
+			 JSONArray ele = new JSONArray();
 			 ele.put(tmpjo);
 			 columns.put(ele);
 			 nk.add(keywords[i]);
@@ -60,17 +60,35 @@ public class HelloWorldREST {
 		 JSONArray pd = new JSONArray();
 		 pd = parser(comp_data, nk);
 		 resd.put("options", pd);
+//		 StringBuilder sb = new StringBuilder();
+//		 for(int i = 0; i < keywords.length; i++){
+//			 sb.append(keywords[i]);
+//		 }
 		 return resd.toString();
 	 }
 	 	
-	 public JSONObject crawl_generate(String company_name){
+	 public JSONObject crawl_generate(String company_name) throws JSONException{
 		 JSONObject json = new JSONObject();
 		 try {
 			 json = new JSONObject(IOUtils.toString(new URL("http://riskanalysis.mybluemix.net/api/results/"+company_name), Charset.forName("UTF-8")));
 		 } catch (Exception ex) {
 		      System.err.println(ex);
 		    }
-		 return json;
+		 JSONArray ja = (JSONArray) json.get("records");
+		 if(ja.length()!=0){
+			 json.put("companyName", company_name);
+			 return json;
+		 }
+		 else{
+			 try {
+				 URL tmp = new URL("riskanalysis.mybluemix.net/api/crawl/"+company_name);
+				 json = new JSONObject(IOUtils.toString(new URL("http://riskanalysis.mybluemix.net/api/results/"+company_name), Charset.forName("UTF-8")));
+			 } catch (Exception ex) {
+			      System.err.println(ex);
+			    }
+			 json.put("companyName", company_name);
+			 return json;
+		 }
 	}
 	 
 	public HashSet<String> get_key(JSONArray data) throws JSONException{
@@ -79,13 +97,11 @@ public class HelloWorldREST {
 		JSONObject jo = data.getJSONObject(0);
 		JSONArray joo = (JSONArray) jo.get("records");
 		JSONObject res = (JSONObject) joo.getJSONObject(0).get("keywords");
-		System.out.print(res.toString());
 		//add jsonobject into set
 		Iterator keys = res.keys();
 		while(keys.hasNext()){
 			String key = (String)keys.next();
 			rset.add(key);
-			
 		}
 		//rset.add(res);
 		for(int i = 1; i < data.length(); i++){
@@ -99,14 +115,53 @@ public class HelloWorldREST {
 				//intersection
 				if(rset.contains(key)){
 					hs.add(key);
-				}
-				
+				}	
 			}
-		}
-		
+		}	
 		return hs;
 	}
-
+	
+	public HashSet<String> filter_keyswords(HashSet<String> keywords, HashSet<String> filter_set){
+		HashSet<String> filteredKeys = new HashSet<String>();
+		for(String key : keywords){
+			if(filter_set.contains(key)){
+				filteredKeys.add(key);
+			}
+		}
+		return filteredKeys;
+	}
+	
+	public JSONArray parser(JSONArray d, HashSet<String> nk) throws JSONException{
+		JSONArray options = new JSONArray();
+		int index = 0;
+		for(int i = 0; i < d.length(); i++){
+			JSONObject data = d.getJSONObject(i);
+			for( int j = 0; j < data.length(); j++){
+				JSONArray entry = (JSONArray) data.get("records");
+				JSONObject valuesJSON = (JSONObject)entry.getJSONObject(j).get("keywords");
+				HashSet<String> values = new HashSet<String>();
+				Iterator keys = valuesJSON.keys();
+				while(keys.hasNext()){
+					String key = (String) keys.next();
+					values.add(key);
+				}
+				values = filter_keyswords(values, nk);
+				
+				JSONObject ele = new JSONObject();
+				ele.put("key", String.valueOf(index));
+				StringBuilder tmp = new StringBuilder();
+				tmp.append(data.get("companyName"));
+				tmp.append(entry.getJSONObject(j).get("year"));
+				ele.put("name",tmp.toString());
+				ele.put("values", values);
+				ele.put("description_html", "Select Biotechnology Portfolio");
+			
+				options.put(ele);
+				index += 1;
+			}
+		}
+		return options;
+	}
 }
 
 
