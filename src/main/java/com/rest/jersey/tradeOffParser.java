@@ -23,8 +23,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-@Path("/helloworld")   //http://localhost:8080/helloworld/rest/helloworld
-public class HelloWorldREST {
+@Path("/parser")   //http://localhost:8080/tradeOffParser/parser
+public class tradeOffParser {
 
 	 @GET
 	 //@Produces(MediaType.TEXT_PLAIN)
